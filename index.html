@@ -1407,6 +1407,8 @@ function hideSplash() {
   const s = document.getElementById('splash');
   if (s) s.classList.add('hidden');
 }
+/* Safety net: force-hide splash after 6 seconds no matter what */
+setTimeout(hideSplash, 6000);
 
 /* ════════════════════════════════════════════════════════════════════
    LADEFUNKTIONEN
@@ -1450,7 +1452,8 @@ async function runSearch() {
  startCdTicker();
  $('last-update').textContent = `${t('lastUpdated')}: ${new Date().toLocaleTimeString()}`;
  $('go-icon').textContent = '🔍'; $('go-label').textContent = 'Suchen';
- } catch (e) { renderError(e.message || 'Fehler'); hideSplash(); }
+ } catch (e) { renderError(e.message || 'Fehler'); }
+ hideSplash();          /* always hide splash — success or error */
  setLoading(false); animateBar();
  if (S.autoOn) startAuto();
 }
