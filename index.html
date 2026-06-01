@@ -1403,12 +1403,18 @@ function toggleAuto() {
    runSearch():  Vollständige Suche: EVA-Lookup + Abfahrten laden.
                  Kein Cache – alles wird frisch vom Server geholt.        ──── */
 /* Blendet den Splash-Screen aus (nach erstem erfolgreichem Laden) */
+const _splashStart = Date.now();  /* record page load time */
+
 function hideSplash() {
   const s = document.getElementById('splash');
-  if (s) s.classList.add('hidden');
+  if (!s) return;
+  const elapsed   = Date.now() - _splashStart;
+  const minShow   = 2000;   /* minimum display: 2 seconds */
+  const remaining = Math.max(0, minShow - elapsed);
+  setTimeout(() => s.classList.add('hidden'), remaining);
 }
-/* Safety net: force-hide splash after 6 seconds no matter what */
-setTimeout(hideSplash, 6000);
+/* Safety net: force-hide after 3 seconds no matter what */
+setTimeout(hideSplash, 3000);
 
 /* ════════════════════════════════════════════════════════════════════
    LADEFUNKTIONEN
