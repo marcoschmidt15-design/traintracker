@@ -555,15 +555,54 @@ border-bottom:1px solid transparent;
 .resp-warn{color:var(--warn);font-weight:600;}
 .resp-dir{color:var(--text);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .resp-status{white-space:nowrap;}
-.resp-empty{padding:8px 12px;font-size:.67rem;color:var(--dim);font-style:italic;}</style>
+.resp-empty{padding:8px 12px;font-size:.67rem;color:var(--dim);font-style:italic;}
+
+/* ── Splash Screen ── */
+#splash{
+  position:fixed;inset:0;z-index:9999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:var(--bg);
+  transition:opacity .5s ease, visibility .5s ease;
+}
+#splash.hidden{opacity:0;visibility:hidden;pointer-events:none;}
+.splash-icon{
+  width:96px;height:96px;border-radius:22px;
+  box-shadow:0 8px 32px rgba(37,99,235,.18);
+  animation:splashBounce .7s cubic-bezier(.34,1.56,.64,1) both;
+}
+.splash-name{
+  margin-top:16px;
+  font-family:var(--sans);font-size:1.4rem;font-weight:700;
+  letter-spacing:-.04em;color:var(--text);
+  opacity:0;animation:splashFade .4s ease .45s forwards;
+}
+.splash-sub{
+  margin-top:6px;
+  font-size:.75rem;color:var(--dim);
+  opacity:0;animation:splashFade .4s ease .6s forwards;
+}
+@keyframes splashBounce{
+  0%  {transform:scale(.4);opacity:0;}
+  100%{transform:scale(1);opacity:1;}
+}
+@keyframes splashFade{
+  from{opacity:0;transform:translateY(6px);}
+  to  {opacity:1;transform:none;}
+}</style>
 </head>
 <body>
+<!-- ── Splash Screen: sichtbar beim Start, blendet aus sobald Daten laden ── -->
+<div id="splash">
+  <img src="icon512.png" alt="TrainTracker" class="splash-icon" />
+  <div class="splash-name">TrainTracker</div>
+  <div class="splash-sub">Live Departures</div>
+</div>
 <div class="wrap"><!-- HEADER --><div class="page-header"><div class="page-title"><img src="icon512.png" alt="" class="header-icon" />TrainTracker</div><div class="header-actions"><button class="btn icon-only" id="btn-route" title="Strecke">🗺</button><button class="btn icon-only" id="btn-log" title="Protokoll">📋</button><button class="btn icon-only" id="btn-settings" title="Einstellungen">⚙</button></div></div><!-- STATION INPUT --><div class="station-panel"><div class="station-row"><div class="input-group"><label class="input-label" for="inp-from" data-i18n="from">Von</label><input id="inp-from" class="station-input"
  placeholder="Name oder EVA-Nr." data-i18n-placeholder="stationPlaceholder" value="Stuttgart Stadtmitte" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="none" /><div class="eva-badge" id="eva-from"></div></div><button class="swap-btn" id="btn-swap" data-i18n-title="swap" title="Tauschen">⇄</button><div class="input-group"><label class="input-label" for="inp-to" data-i18n="to">Nach</label><input id="inp-to" class="station-input"
  placeholder="Name oder EVA-Nr." data-i18n-placeholder="stationPlaceholder" value="Stuttgart-Feuerbach" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="none" /><div class="eva-badge" id="eva-to"></div></div></div><div class="controls"><button class="btn primary" id="btn-go"><span id="go-icon">🔍</span><span id="go-label" data-i18n="search">Suchen</span></button><button class="btn auto-off" id="btn-auto"><span>⏱</span><span id="auto-label" data-i18n="autoOff">Auto-Refresh AUS</span></button><!-- Wechselpfeile in Controls-Zeile (nur Mobile sichtbar) --><button class="swap-btn" id="btn-swap-controls" data-i18n-title="swap" title="Tauschen">⇄</button></div></div><!-- STATUS BAR --><div class="status-bar"><div class="route-display"><span class="pulse-dot off" id="pulse-dot"></span><span id="route-text">—</span></div><span class="last-update" id="last-update"></span></div><!-- DEPARTURE BOARD --><div id="board"><div class="state-card"><div class="state-icon">🚉</div><div class="state-title" data-i18n="readyTitle">Bereit</div><div class="state-msg" data-i18n="readyMsg">Start- und Zielbahnhof eingeben und auf <strong>Suchen</strong> klicken.</div></div></div><!-- ROUTE PANEL --><div id="route-panel"></div><!-- FOOTER: Ladebalken + Icon + Version --><footer>
 <div id="refresh-bar"><div id="refresh-fill"></div></div>
 <div class="footer-branding">
-<span class="footer-version">Version 1.6</span>
+<span class="footer-version">Version 1.0</span>
 </div>
 </footer></div><!-- /.wrap --><!-- ══════════════════════════════════════
  SETTINGS MODAL
@@ -954,8 +993,22 @@ function productLabel(key) {
  return t(PRODUCT[key]?.labelKey || key);
 }
 function buildLine(cat, lineAttr) {
- if (!lineAttr) return cat;
- return lineAttr.toUpperCase().startsWith(cat.toUpperCase()) ? lineAttr : `${cat}${lineAttr}`;
+  if (!lineAttr) return cat;
+
+  // Case 1: lineAttr already starts with the category → use as-is
+  // e.g. cat="S", lineAttr="S6" → "S6"
+  if (lineAttr.toUpperCase().startsWith(cat.toUpperCase())) return lineAttr;
+
+  // Case 2: lineAttr contains operator prefix + category + number
+  // e.g. cat="RE", lineAttr="ARVRE8" → strip everything before "RE" → "RE8"
+  const catUpper = cat.toUpperCase();
+  const laUpper  = lineAttr.toUpperCase();
+  const catIdx   = laUpper.indexOf(catUpper);
+  if (catIdx !== -1) return lineAttr.slice(catIdx);  // "ARVRE8" → "RE8"
+
+  // Case 3: lineAttr is just a number or unknown suffix
+  // e.g. cat="RE", lineAttr="8" → "RE8"
+  return `${cat}${lineAttr}`;
 }
 function esc(s) {
  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1349,6 +1402,12 @@ function toggleAuto() {
                  Wird vom Auto-Refresh und manuell aufgerufen.
    runSearch():  Vollständige Suche: EVA-Lookup + Abfahrten laden.
                  Kein Cache – alles wird frisch vom Server geholt.        ──── */
+/* Blendet den Splash-Screen aus (nach erstem erfolgreichem Laden) */
+function hideSplash() {
+  const s = document.getElementById('splash');
+  if (s) s.classList.add('hidden');
+}
+
 /* ════════════════════════════════════════════════════════════════════
    LADEFUNKTIONEN
    runRefresh()  –  Abfahrten neu laden mit bekannten EVA-IDs.
@@ -1391,7 +1450,7 @@ async function runSearch() {
  startCdTicker();
  $('last-update').textContent = `${t('lastUpdated')}: ${new Date().toLocaleTimeString()}`;
  $('go-icon').textContent = '🔍'; $('go-label').textContent = 'Suchen';
- } catch (e) { renderError(e.message || 'Fehler'); }
+ } catch (e) { renderError(e.message || 'Fehler'); hideSplash(); }
  setLoading(false); animateBar();
  if (S.autoOn) startAuto();
 }
