@@ -19,6 +19,16 @@
   <meta name="application-name" content="TrainTracker" />
   <meta name="description" content="Live DB-Abfahrten" />
 
+  <!-- ── Link-Vorschau (Open Graph + Twitter Card) ── -->
+  <meta property="og:title"        content="TrainTracker" />
+  <meta property="og:description"  content="Live DB-Abfahrten" />
+  <meta property="og:image"        content="icon512.png" />
+  <meta property="og:type"         content="website" />
+  <meta name="twitter:card"        content="summary" />
+  <meta name="twitter:title"       content="TrainTracker" />
+  <meta name="twitter:description" content="Live DB-Abfahrten" />
+  <meta name="twitter:image"       content="icon512.png" />
+
   <title>TrainTracker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" /><style>:root{
@@ -994,21 +1004,22 @@ function productLabel(key) {
 }
 function buildLine(cat, lineAttr) {
   if (!lineAttr) return cat;
-
-  // Case 1: lineAttr already starts with the category → use as-is
-  // e.g. cat="S", lineAttr="S6" → "S6"
-  if (lineAttr.toUpperCase().startsWith(cat.toUpperCase())) return lineAttr;
-
-  // Case 2: lineAttr contains operator prefix + category + number
-  // e.g. cat="RE", lineAttr="ARVRE8" → strip everything before "RE" → "RE8"
-  const catUpper = cat.toUpperCase();
-  const laUpper  = lineAttr.toUpperCase();
-  const catIdx   = laUpper.indexOf(catUpper);
-  if (catIdx !== -1) return lineAttr.slice(catIdx);  // "ARVRE8" → "RE8"
-
-  // Case 3: lineAttr is just a number or unknown suffix
-  // e.g. cat="RE", lineAttr="8" → "RE8"
-  return `${cat}${lineAttr}`;
+  const la  = lineAttr.trim();
+  const laU = la.toUpperCase();
+  const caU = cat.toUpperCase();
+  // Find last occurrence of cat + digits in the string
+  // "ARVRE8" + cat="RE" → idx=3 → "RE8"
+  // "SS6"    + cat="S"  → idx=0 → "S6" (after doubled-prefix strip)
+  const idx = laU.indexOf(caU);
+  if (idx !== -1) {
+    let r = la.slice(idx);
+    // Strip doubled prefix: "SS6" → "S6"
+    if (r.toUpperCase().startsWith(caU + caU)) r = r.slice(caU.length);
+    return r;
+  }
+  // Pure number → prepend category  e.g. "8" + "RE" → "RE8"
+  if (/^\d+$/.test(la)) return cat + la;
+  return cat || la;
 }
 function esc(s) {
  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
